@@ -283,7 +283,7 @@
             <input id="plP2" placeholder="Emel penilai 2 (pilihan)" class="px-3 py-2 rounded-lg border border-slate-200 text-xs col-span-2">
           </div>
           <button onclick="simpanPelajar()" class="mt-2 w-full bg-teal-700 text-white text-xs font-bold py-2.5 rounded-lg">Simpan Pelajar</button>
-          <details class="mt-3">
+          <details class="mt-3" id="blokImport">
             <summary class="text-[11px] font-bold text-slate-500 cursor-pointer">Import pukal (tampal dari Excel)</summary>
             <p class="text-[10px] text-slate-400 mt-1 leading-snug">Susunan lajur (TAB): <code>angkaGiliran · nama · noKP · kelas · kumpulan · jantina · penilai1 · penilai2</code><br>Jantina: L / P. penilai2 boleh kosong.</p>
             <textarea id="importText" rows="6" placeholder="MPU3411_001	AIN ZULFA BINTI MOHD DZAFER	060706142030	BAM1	YUSAINI	P	yusainy@ipgm.edu.my	" class="mt-1 w-full px-2 py-2 rounded-lg border border-slate-200 text-[11px] font-mono"></textarea>
@@ -314,6 +314,7 @@
           </div>
           <div class="flex flex-wrap gap-2">
             <button onclick="muatTurunTemplat()" class="text-xs font-bold bg-white border border-teal-300 text-teal-700 px-3 py-2 rounded-lg">⬇ Templat CSV</button>
+            <button onclick="pergiTambahPelajar()" class="text-xs font-bold bg-teal-700 text-white px-3 py-2 rounded-lg">＋ Import pukal</button>
             <button onclick="padamDipilih()" id="btnPadamDipilih" class="text-xs font-bold bg-white border border-red-300 text-red-700 px-3 py-2 rounded-lg" disabled>Padam dipilih (0)</button>
             <button onclick="padamSemua()" class="text-xs font-bold bg-red-600 text-white px-3 py-2 rounded-lg">Padam semua</button>
           </div>
@@ -353,7 +354,7 @@
    semua data disimpan dalam pelayar (localStorage) supaya boleh diuji tanpa backend. */
 const urlAPI = 'https://script.google.com/macros/s/AKfycbz9MyHFzQANOABO0l6QPc-112Qh5Yp0ZJfkvtx6ekJanxMfCihZOH0YkLGu9z8Hlk4p/exec';
 const MOD_DEMO = urlAPI.indexOf('GANTI_URL_EXEC_ANDA') !== -1 || /[?&]demo=1/.test(location.search);
-const VERSI_FRONTEND = 'v1.3.0-analisis';
+const VERSI_FRONTEND = 'v1.3.1-templat';
 
 let sesi = null;
 let data = { pelajar: [], komponen: [], band: [], markah: [], hantar: [], keputusan: [], konfigurasi: {}, penilai: [] };
@@ -819,6 +820,15 @@ function muatData() {
   }).catch(e => toast('Ralat: ' + e.message, 'error'));
 }
 
+/** Bawa koordinator terus ke borang tambah/import pelajar dan buka blok import. */
+function pergiTambahPelajar() {
+  tukarTab('tetapan');
+  const blok = document.getElementById('blokImport');
+  if (blok) blok.open = true;
+  const el = document.getElementById('plAngka');
+  if (el) { el.scrollIntoView({ block: 'center' }); setTimeout(() => { try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); } }, 150); }
+}
+
 function namaPendek(s) {
   const t = String(s || '');
   return t.length > 60 ? t.charAt(0) + t.slice(1).toLowerCase() : t;
@@ -836,7 +846,14 @@ function binaSenaraiPelajar() {
   const senarai = data.pelajar || [];
   document.getElementById('kiraPelajar').textContent = senarai.length + ' orang';
   if (!senarai.length) {
-    box.innerHTML = '<p class="text-xs text-slate-400 p-3">Tiada pelajar. Koordinator perlu menambah pelajar.</p>';
+    box.innerHTML = '<div class="p-3 space-y-2">' +
+      '<p class="text-xs text-slate-400">Belum ada pelajar dalam sistem.</p>' +
+      (semakKoord()
+        ? '<button onclick="muatTurunTemplat()" class="w-full text-xs font-bold bg-white border border-teal-300 text-teal-700 px-3 py-2 rounded-lg">⬇ Muat turun templat CSV</button>' +
+          '<button onclick="pergiTambahPelajar()" class="w-full text-xs font-bold bg-teal-700 text-white px-3 py-2 rounded-lg">＋ Tambah / Import pelajar</button>' +
+          '<p class="text-[10px] text-slate-400 leading-snug">Isi templat dalam Excel, kemudian tampal dalam tab <b>Pelajar &amp; Penilai</b> → Import pukal.</p>'
+        : '<p class="text-[10px] text-slate-400">Koordinator belum menambah pelajar untuk anda.</p>') +
+      '</div>';
     return;
   }
   senarai.forEach(p => {
@@ -1145,7 +1162,10 @@ function binaJadualKoord() {
   });
 
   if (!(data.keputusan || []).length) {
-    badan.innerHTML = '<tr><td colspan="' + (komp.length + 5) + '" class="text-center py-6 text-slate-400">Tiada data.</td></tr>';
+    badan.innerHTML = '<tr><td colspan="' + (komp.length + 5) + '" class="text-center py-6 text-slate-400">' +
+      (semakKoord()
+        ? 'Tiada data. <button onclick="pergiTambahPelajar()" class="ml-1 underline font-bold text-teal-700">Tambah atau import pelajar</button>'
+        : 'Tiada data.') + '</td></tr>';
   }
 }
 
