@@ -107,6 +107,15 @@
             <span id="kiraPelajar" class="text-[11px] text-slate-400"></span>
           </div>
           <input id="cariPelajar" oninput="tapisPelajar()" placeholder="Cari nama / angka giliran" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs mb-2">
+          <div class="grid grid-cols-2 gap-1.5 mb-2">
+            <select id="tapisKelas" onchange="tapisPelajar()" class="w-full px-2 py-2 rounded-lg border border-slate-200 text-xs">
+              <option value="">Semua kelas</option>
+            </select>
+            <select id="tapisKumpulan" onchange="tapisPelajar()" class="w-full px-2 py-2 rounded-lg border border-slate-200 text-xs">
+              <option value="">Semua kumpulan</option>
+            </select>
+          </div>
+          <p id="kiraTapis" class="text-[10px] text-slate-400 mb-1.5 hidden"></p>
           <div id="senaraiPelajar" class="space-y-1 max-h-[60vh] overflow-y-auto"></div>
         </div>
 
@@ -124,8 +133,14 @@
             <h2 class="font-bold text-sm">Ringkasan Semua Pelajar</h2>
             <p class="text-[11px] text-slate-500">Markah komponen = purata cubaan terbaik setiap penilai.</p>
           </div>
-          <button onclick="muatData()" class="text-xs font-bold bg-white border border-slate-200 px-3 py-2 rounded-lg">Segar semula</button>
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="tapisKelasKoor" onchange="binaJadualKoord()" class="px-2 py-2 rounded-lg border border-slate-200 text-xs">
+              <option value="">Semua kelas</option>
+            </select>
+            <button onclick="muatData()" class="text-xs font-bold bg-white border border-slate-200 px-3 py-2 rounded-lg">Segar semula</button>
+          </div>
         </div>
+        <p id="ringkasKoor" class="text-[11px] text-slate-500 mb-2"></p>
         <div class="overflow-auto">
           <table class="w-full text-xs border-collapse min-w-[760px]">
             <thead class="bg-slate-900 text-white"><tr id="kepalaKoor"></tr></thead>
@@ -369,7 +384,7 @@
    semua data disimpan dalam pelayar (localStorage) supaya boleh diuji tanpa backend. */
 const urlAPI = 'https://script.google.com/macros/s/AKfycbz9MyHFzQANOABO0l6QPc-112Qh5Yp0ZJfkvtx6ekJanxMfCihZOH0YkLGu9z8Hlk4p/exec';
 const MOD_DEMO = urlAPI.indexOf('GANTI_URL_EXEC_ANDA') !== -1 || /[?&]demo=1/.test(location.search);
-const VERSI_FRONTEND = 'v1.5.0-import-pantas';
+const VERSI_FRONTEND = 'v1.6.0-filter-kelas';
 
 let sesi = null;
 let data = { pelajar: [], komponen: [], band: [], markah: [], hantar: [], keputusan: [], konfigurasi: {}, penilai: [] };
@@ -871,12 +886,15 @@ function binaSenaraiPelajar() {
       '</div>';
     return;
   }
+  binaPilihanTapis();
   senarai.forEach(p => {
     const stat = statusPelajar(p.angkaGiliran);
     const btn = document.createElement('button');
     btn.className = 'w-full text-left px-3 py-2 rounded-lg border text-xs transition-colors ' +
       (pelajarAktif === p.angkaGiliran ? 'bg-teal-50 border-teal-300 ring-1 ring-teal-400' : 'bg-white border-slate-200 hover:bg-slate-50');
     btn.dataset.cari = (p.nama + ' ' + p.angkaGiliran).toLowerCase();
+    btn.dataset.kelas = String(p.kelas || '').trim();
+    btn.dataset.kumpulan = String(p.kumpulan || '').trim();
     btn.onclick = () => { pelajarAktif = p.angkaGiliran; binaSenaraiPelajar(); binaPanelMarkah(p.angkaGiliran); };
     btn.innerHTML = '<div class="flex items-center justify-between gap-2">' +
       '<div class="min-w-0"><p class="font-bold truncate">' + esc(p.nama || '(tiada nama)') + '</p>' +
@@ -900,11 +918,60 @@ function statusPelajar(angka) {
   return { semua: dihantar, label: dihantar ? '✓ Dihantar' : terisi + '/' + komp.length };
 }
 
-function tapisPelajar() {
-  const q = (document.getElementById('cariPelajar').value || '').toLowerCase();
-  document.querySelectorAll('#senaraiPelajar button').forEach(b => {
-    b.style.display = (b.dataset.cari || '').includes(q) ? '' : 'none';
+function nilaiTapis(id) {
+  const el = document.getElementById(id);
+  return el ? String(el.value || '').trim() : '';
+}
+
+/** Isi dropdown kelas / kumpulan daripada senarai pelajar semasa (kekalkan pilihan). */
+function binaPilihanTapis() {
+  const pela = data.pelajar || [];
+  [['tapisKelas', 'kelas'], ['tapisKelasKoor', 'kelas'], ['tapisKumpulan', 'kumpulan']].forEach(([id, medan]) => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const semasa = sel.value;
+    const nilai = Array.from(new Set(pela.map(p => String(p[medan] || '').trim()).filter(Boolean))).sort();
+    const label = medan === 'kelas' ? 'Semua kelas' : 'Semua kumpulan';
+    sel.innerHTML = '<option value="">' + label + '</option>' +
+      nilai.map(v => '<option value="' + esc(v) + '">' + esc(v) + '</option>').join('');
+    sel.value = nilai.indexOf(semasa) !== -1 ? semasa : '';
   });
+}
+
+/** Pelajar yang lulus tapisan kelas/kumpulan/carian semasa. */
+function pelajarDitapis() {
+  const kelas = nilaiTapis('tapisKelas');
+  const kumpulan = nilaiTapis('tapisKumpulan');
+  const q = (document.getElementById('cariPelajar')?.value || '').toLowerCase();
+  return (data.pelajar || []).filter(p =>
+    (!kelas || String(p.kelas || '').trim() === kelas) &&
+    (!kumpulan || String(p.kumpulan || '').trim() === kumpulan) &&
+    (!q || (p.nama + ' ' + p.angkaGiliran).toLowerCase().includes(q))
+  );
+}
+
+function tapisPelajar() {
+  const kelas = nilaiTapis('tapisKelas');
+  const kumpulan = nilaiTapis('tapisKumpulan');
+  const q = (document.getElementById('cariPelajar')?.value || '').toLowerCase();
+  const butang = Array.from(document.querySelectorAll('#senaraiPelajar button[data-cari]'));
+  let nampak = 0;
+  butang.forEach(b => {
+    const lulus = (!kelas || b.dataset.kelas === kelas) &&
+                  (!kumpulan || b.dataset.kumpulan === kumpulan) &&
+                  (b.dataset.cari || '').includes(q);
+    b.style.display = lulus ? '' : 'none';
+    if (lulus) nampak++;
+  });
+  const kira = document.getElementById('kiraTapis');
+  const jumlah = (data.pelajar || []).length;
+  if (kira) {
+    const adaTapis = !!(kelas || kumpulan || q);
+    kira.classList.toggle('hidden', !adaTapis);
+    kira.textContent = adaTapis ? (nampak + ' daripada ' + jumlah + ' pelajar dipaparkan') : '';
+  }
+  const kiraPel = document.getElementById('kiraPelajar');
+  if (kiraPel) kiraPel.textContent = (kelas || kumpulan || q) ? (nampak + '/' + jumlah + ' orang') : (jumlah + ' orang');
 }
 
 function markahSaya(angka, kod, cubaan) {
@@ -1143,6 +1210,8 @@ function binaJadualKoord() {
   const badan = document.getElementById('badanKoor');
   if (!kepala || !badan) return;
   const komp = komponenAktif();
+  binaPilihanTapis();
+  const kelasTapis = nilaiTapis('tapisKelasKoor');
   kepala.innerHTML = '<th class="text-left px-3 py-2.5 font-bold">Pelajar</th>' +
     komp.map(k => '<th class="px-2 py-2.5 font-bold text-center" title="' + esc(k.nama) + '">' + esc(k.kod.toUpperCase()) + '<br><span class="font-normal text-[10px] opacity-80">' + k.wajaran + '%</span></th>').join('') +
     '<th class="px-3 py-2.5 font-bold text-center">Jumlah</th><th class="px-2 py-2.5 font-bold text-center">Gred</th>' +
@@ -1150,7 +1219,12 @@ function binaJadualKoord() {
     '<th class="px-2 py-2.5 font-bold text-center">Penilai</th>';
 
   badan.innerHTML = '';
+  const petaKelas = {};
+  (data.pelajar || []).forEach(p => { petaKelas[String(p.angkaGiliran).trim()] = String(p.kelas || '').trim(); });
+  let bilTapis = 0;
   (data.keputusan || []).forEach(row => {
+    if (kelasTapis && petaKelas[String(row.angkaGiliran).trim()] !== kelasTapis) return;
+    bilTapis++;
     const tr = document.createElement('tr');
     tr.className = 'border-b border-slate-100 hover:bg-slate-50 cursor-pointer';
     tr.onclick = () => { pelajarAktif = row.angkaGiliran; tukarTab('penilai'); binaSenaraiPelajar(); binaPanelMarkah(row.angkaGiliran); };
@@ -1176,11 +1250,21 @@ function binaJadualKoord() {
     badan.appendChild(tr);
   });
 
+  const ringkas = document.getElementById('ringkasKoor');
+  if (ringkas) {
+    const jumlah = (data.keputusan || []).length;
+    ringkas.textContent = kelasTapis
+      ? (bilTapis + ' daripada ' + jumlah + ' pelajar · kelas ' + kelasTapis)
+      : (jumlah + ' pelajar');
+  }
+
   if (!(data.keputusan || []).length) {
     badan.innerHTML = '<tr><td colspan="' + (komp.length + 5) + '" class="text-center py-6 text-slate-400">' +
       (semakKoord()
         ? 'Tiada data. <button onclick="pergiTambahPelajar()" class="ml-1 underline font-bold text-teal-700">Tambah atau import pelajar</button>'
         : 'Tiada data.') + '</td></tr>';
+  } else if (!bilTapis) {
+    badan.innerHTML = '<tr><td colspan="' + (komp.length + 5) + '" class="text-center py-6 text-slate-400">Tiada pelajar dalam kelas ' + esc(kelasTapis) + '.</td></tr>';
   }
 }
 
