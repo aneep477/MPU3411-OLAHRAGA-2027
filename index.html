@@ -87,6 +87,10 @@
     <nav class="max-w-7xl mx-auto px-2 flex gap-1 overflow-x-auto">
       <button data-tab="penilai" class="tab-btn px-3 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap">Pemarkahan</button>
       <button data-tab="koordinator" class="tab-btn px-3 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap">Semua Pelajar</button>
+      <button data-tab="rekod" class="tab-btn px-3 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap koord-only">Rekod Prestasi</button>
+      <button data-tab="analisis" class="tab-btn px-3 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap koord-only">Analisis Gred</button>
+      <button data-tab="simulasi" class="tab-btn px-3 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap koord-only">Simulasi</button>
+      <button data-tab="moderasi" class="tab-btn px-3 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap koord-only">Moderasi LAM-PT-02</button>
       <button data-tab="cetak" class="tab-btn px-3 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap">Cetak LAM-PT-04-01</button>
       <button data-tab="rubrik" class="tab-btn px-3 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap koord-only">Tetapan Rubrik</button>
       <button data-tab="tetapan" class="tab-btn px-3 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap koord-only">Pelajar &amp; Penilai</button>
@@ -142,6 +146,112 @@
     </section>
 
     <!-- ===== RUBRIK ===== -->
+    <!-- ===== REKOD PRESTASI ===== -->
+    <section id="tab-rekod" class="tab-panel hidden">
+      <div class="card p-4">
+        <div class="flex flex-wrap items-start justify-between gap-2 mb-3">
+          <div>
+            <h2 class="font-bold text-sm">Rekod Prestasi</h2>
+            <p class="text-[11px] text-slate-500">Klik tajuk lajur untuk susun ikut kelas, nama, jumlah atau gred.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <select id="rkFilterKelas" onchange="binaRekodPrestasi()" class="px-2 py-2 rounded-lg border border-slate-200 text-xs"></select>
+            <input id="rkCari" oninput="binaRekodPrestasi()" placeholder="Cari nama / angka giliran" class="px-3 py-2 rounded-lg border border-slate-200 text-xs">
+            <button onclick="muatTurunRekodCSV()" class="text-xs font-bold bg-white border border-teal-300 text-teal-700 px-3 py-2 rounded-lg">⬇ CSV</button>
+          </div>
+        </div>
+        <p id="ringkasRekod" class="text-[11px] text-slate-500 mb-2"></p>
+        <div class="overflow-auto max-h-[65vh] rounded-lg border border-slate-200">
+          <table class="w-full text-xs border-collapse min-w-[680px]">
+            <thead class="bg-slate-900 text-white sticky top-0 z-10"><tr id="kepalaRekod"></tr></thead>
+            <tbody id="badanRekod" class="divide-y divide-slate-100 bg-white"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ANALISIS GRED ===== -->
+    <section id="tab-analisis" class="tab-panel hidden">
+      <div class="flex flex-wrap items-start justify-between gap-2 mb-3">
+        <div>
+          <h2 class="font-bold text-sm">Analisis Gred</h2>
+          <p class="text-[11px] text-slate-500">Dikira di backend: <code class="text-[10px] bg-slate-100 px-1 rounded">action=analisisGred</code></p>
+        </div>
+        <button onclick="muatAnalisisGred()" class="text-xs font-bold bg-white border border-slate-200 px-3 py-2 rounded-lg">Muat semula</button>
+      </div>
+      <div id="panelAnalisis" class="space-y-4">
+        <div class="card p-6 text-center text-slate-400 text-sm">Tekan “Muat semula” untuk mengira analisis.</div>
+      </div>
+    </section>
+
+    <!-- ===== SIMULASI & SISIHAN PIAWAI ===== -->
+    <section id="tab-simulasi" class="tab-panel hidden">
+      <div class="card p-4">
+        <h2 class="font-bold text-sm">Simulasi &amp; Sisihan Piawai</h2>
+        <p class="text-[11px] text-slate-500 mb-3">Dijana di backend: <code class="text-[10px] bg-slate-100 px-1 rounded">action=simulasiSisihanPiawai</code> — bukan pengiraan dalam pelayar.</p>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <label class="block"><span class="text-[10px] font-bold text-slate-500">Sumber data</span>
+            <select id="simMod" class="mt-1 w-full px-2 py-2 rounded-lg border border-slate-200 text-xs">
+              <option value="sebenar">Bootstrap markah sebenar</option>
+              <option value="rawak">Jana markah rawak</option>
+            </select></label>
+          <label class="block"><span class="text-[10px] font-bold text-slate-500">Bilangan pelajar (n)</span>
+            <input id="simBil" type="number" min="2" max="1000" value="30" class="mt-1 w-full px-2 py-2 rounded-lg border border-slate-200 text-xs"></label>
+          <label class="block"><span class="text-[10px] font-bold text-slate-500">Iterasi</span>
+            <input id="simIterasi" type="number" min="10" max="2000" value="300" class="mt-1 w-full px-2 py-2 rounded-lg border border-slate-200 text-xs"></label>
+          <label class="block"><span class="text-[10px] font-bold text-slate-500">Markah minimum</span>
+            <input id="simMin" type="number" step="1" value="0" class="mt-1 w-full px-2 py-2 rounded-lg border border-slate-200 text-xs"></label>
+          <label class="block"><span class="text-[10px] font-bold text-slate-500">Markah maksimum</span>
+            <input id="simMaks" type="number" step="1" value="100" class="mt-1 w-full px-2 py-2 rounded-lg border border-slate-200 text-xs"></label>
+          <label class="block"><span class="text-[10px] font-bold text-slate-500">Taburan</span>
+            <select id="simTaburan" class="mt-1 w-full px-2 py-2 rounded-lg border border-slate-200 text-xs">
+              <option value="normal">Normal</option>
+              <option value="seragam">Seragam</option>
+              <option value="serongKanan">Serong kanan (banyak rendah)</option>
+              <option value="serongKiri">Serong kiri (banyak tinggi)</option>
+            </select></label>
+          <label class="block"><span class="text-[10px] font-bold text-slate-500">Seed</span>
+            <input id="simSeed" type="number" value="2026" class="mt-1 w-full px-2 py-2 rounded-lg border border-slate-200 text-xs"></label>
+        </div>
+        <p class="text-[10px] text-slate-400 mt-2">Bilangan pelajar / min / maks / taburan hanya digunakan untuk mod “Jana markah rawak”. Seed sama = keputusan sama.</p>
+        <button onclick="jalankanSimulasi()" class="mt-3 w-full sm:w-auto bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold px-4 py-2.5 rounded-lg">Jalankan Simulasi</button>
+      </div>
+      <div id="panelSimulasi" class="mt-4 space-y-4">
+        <div class="card p-6 text-center text-slate-400 text-sm">Belum ada simulasi dijalankan.</div>
+      </div>
+    </section>
+
+    <!-- ===== MODERASI LAM-PT-02 ===== -->
+    <section id="tab-moderasi" class="tab-panel hidden">
+      <div class="card p-4">
+        <div class="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 class="font-bold text-sm">Moderasi — LAM-PT-02</h2>
+            <p class="text-[11px] text-slate-500">Sampel markah rendah / sederhana / tinggi. Dijana oleh <code class="text-[10px] bg-slate-100 px-1 rounded">action=moderasiPT02</code>.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <select id="modKaedah" class="px-2 py-2 rounded-lg border border-slate-200 text-xs">
+              <option value="tertile">Pecahan tiga (tertile)</option>
+              <option value="gred">Ikut gred (≥70 / 50–69 / &lt;50)</option>
+            </select>
+            <select id="modBil" class="px-2 py-2 rounded-lg border border-slate-200 text-xs">
+              <option value="3">3 setiap kategori</option>
+              <option value="2">2 setiap kategori</option>
+              <option value="4">4 setiap kategori</option>
+              <option value="5">5 setiap kategori</option>
+            </select>
+            <button onclick="janaModerasi()" class="text-xs font-bold bg-slate-900 text-white px-3 py-2 rounded-lg">Jana sampel</button>
+            <button onclick="cetakModerasiLAMPT02()" class="text-xs font-bold bg-teal-700 text-white px-3 py-2 rounded-lg">Cetak LAM-PT-02</button>
+          </div>
+        </div>
+        <label class="block mt-3"><span class="text-[10px] font-bold text-slate-500">Ulasan moderator (masuk ke borang)</span>
+          <textarea id="modUlasan" rows="3" placeholder="Contoh: Markah sampel disemak; taburan wajaran konsisten antara penilai." class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-xs"></textarea></label>
+      </div>
+      <div id="panelModerasi" class="mt-4 space-y-4">
+        <div class="card p-6 text-center text-slate-400 text-sm">Tekan “Jana sampel” untuk memilih 3 rendah / 3 sederhana / 3 tinggi.</div>
+      </div>
+    </section>
+
     <section id="tab-rubrik" class="tab-panel hidden">
       <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
         <div class="card p-3 h-fit">
@@ -243,7 +353,7 @@
    semua data disimpan dalam pelayar (localStorage) supaya boleh diuji tanpa backend. */
 const urlAPI = 'https://script.google.com/macros/s/AKfycbz9MyHFzQANOABO0l6QPc-112Qh5Yp0ZJfkvtx6ekJanxMfCihZOH0YkLGu9z8Hlk4p/exec';
 const MOD_DEMO = urlAPI.indexOf('GANTI_URL_EXEC_ANDA') !== -1 || /[?&]demo=1/.test(location.search);
-const VERSI_FRONTEND = 'v1.2.0-url-baru';
+const VERSI_FRONTEND = 'v1.3.0-analisis';
 
 let sesi = null;
 let data = { pelajar: [], komponen: [], band: [], markah: [], hantar: [], keputusan: [], konfigurasi: {}, penilai: [] };
@@ -704,6 +814,8 @@ function muatData() {
     pilihanData.forEach(a => { if (!setAngka.has(a)) pilihanData.delete(a); });
     binaJadualData();
     if (pelajarAktif) binaPanelMarkah(pelajarAktif);
+    if (tabAktif === 'rekod') binaRekodPrestasi();
+    if (tabAktif === 'analisis' && dataAnalisis) muatAnalisisGred();
   }).catch(e => toast('Ralat: ' + e.message, 'error'));
 }
 
@@ -1338,6 +1450,457 @@ function binaSenaraiPenilai() {
   });
 }
 
+/* ================= REKOD PRESTASI ================= */
+let susunRekod = { kunci: 'kelas', arah: 1 };
+const URUT_GRED = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'F', ''];
+
+function barisRekod() {
+  const pela = data.pelajar || [];
+  return (data.keputusan || []).map(r => {
+    const pl = pela.find(x => x.angkaGiliran === r.angkaGiliran) || {};
+    const komp = r.komponen || {};
+    const ada = Object.keys(komp).some(k => komp[k] && komp[k].markah !== null);
+    return {
+      angkaGiliran: r.angkaGiliran,
+      nama: r.nama,
+      kelas: pl.kelas || '',
+      kumpulan: pl.kumpulan || '',
+      jumlah: ada ? (Number(r.jumlah) || 0) : null,
+      gred: ada ? (r.gred || '') : '',
+      mata: ada ? r.mata : '',
+      adaMarkah: ada
+    };
+  });
+}
+
+function susunRekodIkut(kunci) {
+  if (susunRekod.kunci === kunci) susunRekod.arah = -susunRekod.arah;
+  else susunRekod = { kunci: kunci, arah: 1 };
+  binaRekodPrestasi();
+}
+
+function bandingRekod(a, b) {
+  const k = susunRekod.kunci;
+  let x = a[k], y = b[k];
+  if (k === 'gred') { x = URUT_GRED.indexOf(a.gred); y = URUT_GRED.indexOf(b.gred); }
+  const kosong = v => v === null || v === undefined || v === '';
+  if (kosong(x) && kosong(y)) return String(a.nama || '').localeCompare(String(b.nama || ''), 'ms');
+  if (kosong(x)) return 1;
+  if (kosong(y)) return -1;
+  if (typeof x === 'string' || typeof y === 'string') return String(x).localeCompare(String(y), 'ms') * susunRekod.arah;
+  return (x - y) * susunRekod.arah;
+}
+
+function kepalaRekodSel(kunci, label) {
+  const aktif = susunRekod.kunci === kunci;
+  const tanda = aktif ? (susunRekod.arah === 1 ? ' ▲' : ' ▼') : '';
+  return '<th class="px-2 py-2.5 text-left cursor-pointer select-none hover:bg-slate-800 whitespace-nowrap" onclick="susunRekodIkut(\'' + kunci + '\')">' +
+    label + '<span class="text-[9px] opacity-80">' + tanda + '</span></th>';
+}
+
+function binaRekodPrestasi() {
+  const kepala = document.getElementById('kepalaRekod');
+  const badan = document.getElementById('badanRekod');
+  if (!kepala || !badan) return;
+
+  // Isi senarai kelas (sekali, kekalkan pilihan)
+  const pilihKelas = document.getElementById('rkFilterKelas');
+  if (pilihKelas) {
+    const kelasSet = Array.from(new Set((data.pelajar || []).map(p => String(p.kelas || '').trim()).filter(Boolean))).sort();
+    const semasa = pilihKelas.value;
+    pilihKelas.innerHTML = '<option value="">Semua kelas</option>' + kelasSet.map(k => '<option value="' + esc(k) + '">' + esc(k) + '</option>').join('');
+    pilihKelas.value = kelasSet.indexOf(semasa) !== -1 ? semasa : '';
+  }
+
+  const kelas = pilihKelas ? pilihKelas.value : '';
+  const q = (document.getElementById('rkCari')?.value || '').toLowerCase();
+  let senarai = barisRekod();
+  const semua = senarai.length;
+  if (kelas) senarai = senarai.filter(r => r.kelas === kelas);
+  if (q) senarai = senarai.filter(r => (r.nama + ' ' + r.angkaGiliran + ' ' + r.kelas).toLowerCase().includes(q));
+  senarai.sort(bandingRekod);
+
+  kepala.innerHTML = '<th class="px-2 py-2.5 text-left">Bil.</th>' +
+    kepalaRekodSel('nama', 'Nama') + kepalaRekodSel('angkaGiliran', 'Angka Giliran') + kepalaRekodSel('kelas', 'Kelas') +
+    kepalaRekodSel('jumlah', 'Jumlah') + kepalaRekodSel('gred', 'Gred') + kepalaRekodSel('mata', 'Mata');
+
+  badan.innerHTML = '';
+  senarai.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    tr.className = 'hover:bg-slate-50 cursor-pointer';
+    tr.onclick = () => { pelajarAktif = r.angkaGiliran; tukarTab('penilai'); binaSenaraiPelajar(); binaPanelMarkah(r.angkaGiliran); };
+    const warna = !r.adaMarkah ? 'text-slate-300' : (r.jumlah >= 60 ? 'text-emerald-700' : (r.jumlah >= 40 ? 'text-amber-700' : 'text-red-600'));
+    tr.innerHTML =
+      '<td class="px-2 py-2 text-center text-slate-400">' + (i + 1) + '</td>' +
+      '<td class="px-2 py-2 font-medium">' + esc(r.nama) + '</td>' +
+      '<td class="px-2 py-2 font-mono text-[11px]">' + esc(r.angkaGiliran) + '</td>' +
+      '<td class="px-2 py-2">' + esc(r.kelas || '—') + '</td>' +
+      '<td class="px-2 py-2 text-center font-bold ' + warna + '">' + (r.adaMarkah ? r.jumlah.toFixed(2) : '—') + '</td>' +
+      '<td class="px-2 py-2 text-center font-bold ' + warna + '">' + (r.adaMarkah ? esc(r.gred || '—') : '—') + '</td>' +
+      '<td class="px-2 py-2 text-center">' + (r.adaMarkah && r.mata !== '' && r.mata !== null ? Number(r.mata).toFixed(2) : '—') + '</td>';
+    badan.appendChild(tr);
+  });
+  if (!senarai.length) {
+    badan.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-slate-400">' + (semua ? 'Tiada padanan.' : 'Belum ada pelajar.') + '</td></tr>';
+  }
+
+  const dinilai = senarai.filter(r => r.adaMarkah).map(r => r.jumlah);
+  let ringkas = senarai.length + ' / ' + semua + ' pelajar';
+  if (dinilai.length) {
+    const purata = dinilai.reduce((a, b) => a + b, 0) / dinilai.length;
+    const varians = dinilai.length > 1 ? dinilai.reduce((a, b) => a + Math.pow(b - purata, 2), 0) / (dinilai.length - 1) : 0;
+    ringkas += ' · dinilai ' + dinilai.length + ' · purata ' + purata.toFixed(2) +
+      ' · sisihan piawai ' + Math.sqrt(varians).toFixed(2) +
+      ' · tertinggi ' + Math.max.apply(null, dinilai).toFixed(2) +
+      ' · terendah ' + Math.min.apply(null, dinilai).toFixed(2);
+  }
+  const el = document.getElementById('ringkasRekod');
+  if (el) el.textContent = ringkas;
+}
+
+function muatTurunRekodCSV() {
+  const senarai = barisRekod().sort(bandingRekod);
+  if (!senarai.length) { toast('Tiada data untuk dimuat turun.', 'warn'); return; }
+  const baris = [['angkaGiliran', 'nama', 'kelas', 'kumpulan', 'jumlah', 'gred', 'mata']];
+  senarai.forEach(r => baris.push([
+    r.angkaGiliran, r.nama, r.kelas, r.kumpulan,
+    r.adaMarkah ? r.jumlah.toFixed(2) : '', r.gred, (r.adaMarkah && r.mata !== '' ? Number(r.mata).toFixed(2) : '')
+  ]));
+  const csv = '\uFEFF' + baris.map(b => b.map(c => '"' + String(c === null || c === undefined ? '' : c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'rekod-prestasi-mpu3411.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('CSV rekod prestasi dimuat turun.', 'ok');
+}
+
+/* ================= ANALISIS GRED ================= */
+let dataAnalisis = null;
+
+function muatAnalisisGred() {
+  const panel = document.getElementById('panelAnalisis');
+  if (panel) panel.innerHTML = '<div class="card p-6 text-center text-slate-400 text-sm">Mengira di pelayan…</div>';
+  panggil({ action: 'analisisGred' }).then(res => {
+    if (!res || res.status !== 'success') {
+      toast((res && res.message) || 'Gagal analisis.', 'error');
+      if (panel) panel.innerHTML = '<div class="card p-6 text-center text-slate-400 text-sm">' + esc((res && res.message) || 'Gagal analisis.') + '</div>';
+      return;
+    }
+    dataAnalisis = res;
+    binaPanelAnalisis();
+  }).catch(e => {
+    toast('Ralat: ' + e.message, 'error');
+    if (panel) panel.innerHTML = '<div class="card p-6 text-center text-red-500 text-sm">' + esc(e.message) + '</div>';
+  });
+}
+
+function kotakStat(label, nilai, nota) {
+  return '<div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5">' +
+    '<p class="text-[9px] font-bold uppercase text-slate-400">' + esc(label) + '</p>' +
+    '<p class="text-lg font-bold text-slate-800 leading-tight">' + esc(nilai) + '</p>' +
+    (nota ? '<p class="text-[9px] text-slate-400">' + esc(nota) + '</p>' : '') + '</div>';
+}
+
+function binaPanelAnalisis() {
+  const panel = document.getElementById('panelAnalisis');
+  const a = dataAnalisis;
+  if (!panel || !a) return;
+  const s = a.statistik || {};
+  const maksPeratus = Math.max.apply(null, (a.taburanGred || []).map(t => t.peratus).concat([1]));
+
+  let h = '<div class="card p-4">' +
+    '<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">' +
+    kotakStat('Dinilai', (a.bilDinilai || 0) + ' / ' + (a.bilPelajar || 0), 'pelajar') +
+    kotakStat('Purata', s.purata === null ? '—' : s.purata, 'markah') +
+    kotakStat('Median', s.median === null ? '—' : s.median, 'markah') +
+    kotakStat('Sisihan piawai', s.sisihanPiawai === null ? '—' : s.sisihanPiawai, 'n-1') +
+    kotakStat('Minimum', s.min === null ? '—' : s.min, '') +
+    kotakStat('Maksimum', s.max === null ? '—' : s.max, '') +
+    kotakStat('Lulus (≥40)', (a.bilanganLulus || 0) + ' (' + (a.peratusLulus || 0) + '%)', '') +
+    kotakStat('Julat', s.julat === null ? '—' : s.julat, 'max − min') +
+    '</div></div>';
+
+  h += '<div class="card p-4"><h3 class="font-bold text-sm mb-2">Taburan Gred</h3><div class="space-y-1.5">' +
+    (a.taburanGred || []).map(t =>
+      '<div class="flex items-center gap-2">' +
+      '<span class="w-8 text-[11px] font-bold text-slate-600">' + esc(t.gred) + '</span>' +
+      '<div class="flex-1 bg-slate-100 rounded h-4 overflow-hidden">' +
+      '<div class="h-full bg-teal-600" style="width:' + (t.bilangan ? Math.max(4, t.peratus / maksPeratus * 100) : 0) + '%"></div></div>' +
+      '<span class="w-20 text-right text-[11px] font-bold text-slate-700">' + t.bilangan + ' · ' + t.peratus + '%</span>' +
+      '</div>').join('') +
+    '</div></div>';
+
+  h += '<div class="card p-4"><h3 class="font-bold text-sm mb-2">Ikut Kelas</h3>' +
+    '<div class="overflow-auto rounded-lg border border-slate-200"><table class="w-full text-xs border-collapse min-w-[520px]">' +
+    '<thead class="bg-slate-900 text-white"><tr><th class="px-2 py-2 text-left">Kelas</th><th class="px-2 py-2 text-center">Bil.</th>' +
+    '<th class="px-2 py-2 text-center">Purata</th><th class="px-2 py-2 text-center">Sisihan piawai</th><th class="px-2 py-2 text-center">Min</th><th class="px-2 py-2 text-center">Maks</th></tr></thead><tbody class="divide-y divide-slate-100 bg-white">' +
+    (a.perKelas || []).map(k =>
+      '<tr><td class="px-2 py-2 font-bold">' + esc(k.kelas) + '</td>' +
+      '<td class="px-2 py-2 text-center">' + k.bilangan + '</td>' +
+      '<td class="px-2 py-2 text-center font-bold">' + k.statistik.purata + '</td>' +
+      '<td class="px-2 py-2 text-center">' + k.statistik.sisihanPiawai + '</td>' +
+      '<td class="px-2 py-2 text-center">' + k.statistik.min + '</td>' +
+      '<td class="px-2 py-2 text-center">' + k.statistik.max + '</td></tr>').join('') +
+    '</tbody></table></div></div>';
+
+  if (a.tertinggi && a.terendah) {
+    h += '<div class="card p-4 text-[11px] text-slate-600">Tertinggi: <b>' + esc(a.tertinggi.nama) + '</b> (' + a.tertinggi.jumlah.toFixed(2) + ' · ' + esc(a.tertinggi.gred) + ') · ' +
+      'Terendah: <b>' + esc(a.terendah.nama) + '</b> (' + a.terendah.jumlah.toFixed(2) + ' · ' + esc(a.terendah.gred) + ')</div>';
+  }
+
+  panel.innerHTML = h;
+}
+
+/* ================= SIMULASI & SISIHAN PIAWAI ================= */
+let dataSimulasi = null;
+
+function nilaiInput(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+
+function jalankanSimulasi() {
+  const panel = document.getElementById('panelSimulasi');
+  const payload = {
+    action: 'simulasiSisihanPiawai',
+    mod: nilaiInput('simMod'),
+    bilangan: Number(nilaiInput('simBil')) || 30,
+    minMarkah: Number(nilaiInput('simMin')),
+    maxMarkah: Number(nilaiInput('simMaks')),
+    taburan: nilaiInput('simTaburan'),
+    iterasi: Number(nilaiInput('simIterasi')) || 300,
+    seed: Number(nilaiInput('simSeed')) || 2026
+  };
+  if (panel) panel.innerHTML = '<div class="card p-6 text-center text-slate-400 text-sm">Menjalankan ' + payload.iterasi + ' iterasi di pelayan…</div>';
+  panggil(payload).then(res => {
+    if (!res || res.status !== 'success') {
+      toast((res && res.message) || 'Simulasi gagal.', 'error');
+      if (panel) panel.innerHTML = '<div class="card p-6 text-center text-slate-400 text-sm">' + esc((res && res.message) || 'Simulasi gagal.') + '</div>';
+      return;
+    }
+    dataSimulasi = res;
+    binaPanelSimulasi(res);
+  }).catch(e => {
+    toast('Ralat: ' + e.message, 'error');
+    if (panel) panel.innerHTML = '<div class="card p-6 text-center text-red-500 text-sm">' + esc(e.message) + '</div>';
+  });
+}
+
+function barTaburan(senarai, labelKunci, nilaiKunci, warna) {
+  const maks = Math.max.apply(null, senarai.map(x => x[nilaiKunci]).concat([1]));
+  return senarai.map(x =>
+    '<div class="flex items-center gap-2">' +
+    '<span class="w-24 text-[10px] text-slate-500 text-right">' + esc(x[labelKunci]) + '</span>' +
+    '<div class="flex-1 bg-slate-100 rounded h-3.5 overflow-hidden">' +
+    '<div class="h-full ' + warna + '" style="width:' + (x[nilaiKunci] ? Math.max(3, x[nilaiKunci] / maks * 100) : 0) + '%"></div></div>' +
+    '<span class="w-10 text-right text-[10px] font-bold text-slate-700">' + x[nilaiKunci] + '</span></div>').join('');
+}
+
+function binaPanelSimulasi(res) {
+  const panel = document.getElementById('panelSimulasi');
+  if (!panel) return;
+  const r = res.ringkasan || {};
+  let h = '<div class="card p-4">' +
+    '<div class="flex flex-wrap items-start justify-between gap-2 mb-3">' +
+    '<div><h3 class="font-bold text-sm">Keputusan Simulasi</h3>' +
+    '<p class="text-[10px] text-slate-500">' + esc(res.mod === 'rawak' ? ('Markah rawak · taburan ' + res.taburan + ' · julat ' + res.minMarkah + '–' + res.maxMarkah) : 'Bootstrap data sebenar (' + (res.statistikSebenar ? res.statistikSebenar.n : 0) + ' markah)') +
+    ' · n=' + res.bilangan + ' · ' + res.iterasi + ' iterasi · seed ' + res.seed + '</p></div>' +
+    '<span class="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded">action=simulasiSisihanPiawai</span></div>' +
+    '<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">' +
+    kotakStat('Purata SD', r.purataSD, 'jangkaan') +
+    kotakStat('SD P5', r.sdP5, 'had bawah 90%') +
+    kotakStat('SD P95', r.sdP95, 'had atas 90%') +
+    kotakStat('Julat SD', (r.minSD + ' – ' + r.maxSD), 'min–maks') +
+    kotakStat('Purata markah', r.purataDaripadaPurata, 'jangkaan') +
+    kotakStat('Purata P5', r.purataP5, '') +
+    kotakStat('Purata P95', r.purataP95, '') +
+    kotakStat('Purata markah julat', (r.purataMin + ' – ' + r.purataMaks), '') +
+    '</div></div>';
+
+  h += '<div class="card p-4"><h3 class="font-bold text-sm mb-2">Taburan sisihan piawai (' + res.iterasi + ' iterasi)</h3>' +
+    barTaburan(res.taburanSD || [], 'bin', 'bilangan', 'bg-indigo-500') + '</div>';
+
+  h += '<div class="card p-4"><h3 class="font-bold text-sm mb-2">Taburan gred (set pertama)</h3>' +
+    barTaburan(res.taburanGredSatuSet || [], 'gred', 'bilangan', 'bg-teal-600') + '</div>';
+
+  if (res.sampelMarkah && res.sampelMarkah.length) {
+    h += '<div class="card p-4"><h3 class="font-bold text-sm mb-2">Sampel markah (40 pertama)</h3>' +
+      '<p class="text-[11px] font-mono text-slate-600 leading-relaxed break-words">' + esc(res.sampelMarkah.join(', ')) + '</p></div>';
+  }
+
+  panel.innerHTML = h;
+}
+
+/* ================= MODERASI LAM-PT-02 ================= */
+let dataModerasi = null;
+
+function janaModerasi() {
+  const panel = document.getElementById('panelModerasi');
+  if (panel) panel.innerHTML = '<div class="card p-6 text-center text-slate-400 text-sm">Memilih sampel di pelayan…</div>';
+  panggil({ action: 'moderasiPT02', kaedah: nilaiInput('modKaedah') || 'tertile', bilangan: Number(nilaiInput('modBil')) || 3 })
+    .then(res => {
+      if (!res || res.status !== 'success') {
+        toast((res && res.message) || 'Gagal jana sampel.', 'error');
+        if (panel) panel.innerHTML = '<div class="card p-6 text-center text-slate-400 text-sm">' + esc((res && res.message) || 'Gagal jana sampel.') + '</div>';
+        return;
+      }
+      dataModerasi = res;
+      binaPanelModerasi();
+    })
+    .catch(e => {
+      toast('Ralat: ' + e.message, 'error');
+      if (panel) panel.innerHTML = '<div class="card p-6 text-center text-red-500 text-sm">' + esc(e.message) + '</div>';
+    });
+}
+
+const WARNA_KATEGORI = {
+  tinggi: { kotak: 'border-emerald-300', tajuk: 'text-emerald-700', latar: 'bg-emerald-50' },
+  sederhana: { kotak: 'border-amber-300', tajuk: 'text-amber-700', latar: 'bg-amber-50' },
+  rendah: { kotak: 'border-red-300', tajuk: 'text-red-700', latar: 'bg-red-50' }
+};
+
+function binaPanelModerasi() {
+  const panel = document.getElementById('panelModerasi');
+  const m = dataModerasi;
+  if (!panel || !m) return;
+
+  let h = '<div class="card p-3 text-[11px] text-slate-600">Kaedah: <b>' +
+    (m.kaedah === 'gred' ? 'ikut gred (≥70 tinggi · 50–69 sederhana · <50 rendah)' : 'pecahan tiga (tertile)') +
+    '</b> · ' + m.bilDinilai + ' pelajar dinilai · ' + m.bilangan + ' sampel setiap kategori' +
+    (m.kaedah === 'tertile' ? ' · had: <b>' + m.had.bawah + '</b> dan <b>' + m.had.atas + '</b>' : '') + '</div>';
+
+  ['tinggi', 'sederhana', 'rendah'].forEach(kat => {
+    const w = WARNA_KATEGORI[kat];
+    const senarai = m.kumpulan[kat] || [];
+    h += '<div class="card p-3 border ' + w.kotak + '"><div class="flex items-center justify-between mb-2">' +
+      '<h3 class="font-bold text-sm ' + w.tajuk + '">Markah ' + kat.toUpperCase() + ' (' + senarai.length + ')</h3>' +
+      '<span class="text-[10px] text-slate-400">Tukar calon →</span></div>';
+    if (!senarai.length) {
+      h += '<p class="text-[11px] text-slate-400">Tiada calon dalam kategori ini.</p>';
+    } else {
+      h += '<div class="space-y-1.5">';
+      senarai.forEach((r, i) => {
+        const calonKat = (m.calon || []).filter(c => c.kategori === kat).sort((a, b) => b.jumlah - a.jumlah);
+        h += '<div class="flex flex-wrap items-center gap-2 ' + w.latar + ' rounded-lg px-2 py-1.5">' +
+          '<div class="flex-1 min-w-[140px]"><p class="text-[11px] font-bold text-slate-800">' + esc(r.nama) + '</p>' +
+          '<p class="text-[10px] text-slate-500 font-mono">' + esc(r.angkaGiliran) + (r.kelas ? ' · ' + esc(r.kelas) : '') + '</p></div>' +
+          '<span class="text-[11px] font-bold text-slate-700">' + Number(r.jumlah).toFixed(2) + ' · ' + esc(r.gred) + '</span>' +
+          '<select onchange="tukarCalonModerasi(\'' + kat + '\',' + i + ',this.value)" class="text-[10px] px-1.5 py-1 rounded border border-slate-300 bg-white max-w-[160px]">' +
+          calonKat.map(c => '<option value="' + esc(c.angkaGiliran) + '"' + (c.angkaGiliran === r.angkaGiliran ? ' selected' : '') + '>' +
+            esc(c.angkaGiliran) + ' · ' + esc(String(c.nama).slice(0, 18)) + ' · ' + Number(c.jumlah).toFixed(1) + '</option>').join('') +
+          '</select></div>';
+      });
+      h += '</div>';
+    }
+    h += '</div>';
+  });
+
+  panel.innerHTML = h;
+}
+
+function tukarCalonModerasi(kategori, indeks, angkaGiliran) {
+  if (!dataModerasi) return;
+  const calon = (dataModerasi.calon || []).find(c => String(c.angkaGiliran) === String(angkaGiliran) && c.kategori === kategori);
+  if (!calon) { toast('Calon itu bukan dalam kategori ini.', 'warn'); return; }
+  const senarai = dataModerasi.kumpulan[kategori] || [];
+  const sudahAda = senarai.some((r, i) => i !== indeks && String(r.angkaGiliran) === String(angkaGiliran));
+  if (sudahAda) { toast('Pelajar itu sudah dipilih dalam kategori ini.', 'warn'); binaPanelModerasi(); return; }
+  senarai[indeks] = calon;
+  binaPanelModerasi();
+}
+
+function cetakModerasiLAMPT02() {
+  if (!dataModerasi) { toast('Jana sampel dahulu sebelum cetak.', 'warn'); return; }
+  const m = dataModerasi;
+  const konf = m.konfigurasi || {};
+  const komp = m.komponen || [];
+  if (!komp.length) { toast('Tiada komponen aktif untuk dicetak.', 'warn'); return; }
+
+  const ukuran = 'border:1px solid #000;padding:3px 4px;';
+  const senarai = []
+    .concat((m.kumpulan.tinggi || []).map(r => Object.assign({ _kat: 'TINGGI' }, r)))
+    .concat((m.kumpulan.sederhana || []).map(r => Object.assign({ _kat: 'SEDERHANA' }, r)))
+    .concat((m.kumpulan.rendah || []).map(r => Object.assign({ _kat: 'RENDAH' }, r)));
+
+  const ulasan = (document.getElementById('modUlasan')?.value || '').trim();
+
+  function barisMaklumat(label, nilai) {
+    return '<tr><td style="width:120px;font-weight:bold">' + esc(label) + '</td><td>: ' + esc(nilai || '') + '</td></tr>';
+  }
+
+  let html = '<div style="font-family:Arial,sans-serif;color:#000;font-size:9px;padding:4mm">' +
+    '<div style="border:2px solid #000;padding:2mm 3mm;margin-bottom:3mm">' +
+    '<div style="font-weight:bold;font-size:9px">LAM-PT-02</div>' +
+    '<div style="text-align:center;font-weight:bold;font-size:12px;margin-top:1mm">BORANG MODERASI PENTAKSIRAN</div>' +
+    '<div style="text-align:center;font-size:8px">Sampel Markah Rendah · Sederhana · Tinggi</div>' +
+    '</div>' +
+    '<table style="width:100%;border-collapse:collapse;margin-bottom:2mm;font-size:9px">' +
+    barisMaklumat('KAMPUS', konf.kampus || '') +
+    barisMaklumat('PROGRAM', konf.program || '') +
+    barisMaklumat('NAMA KURSUS', konf.namaKursus || '') +
+    barisMaklumat('KOD KURSUS', konf.kodKursus || '') +
+    barisMaklumat('KAEDAH SAMPEL', m.kaedah === 'gred' ? 'Ikut gred (≥70 / 50–69 / <50)' : 'Pecahan tiga (tertile)') +
+    barisMaklumat('BIL. SAMPEL', m.bilangan + ' setiap kategori · jumlah ' + senarai.length + ' pelajar') +
+    barisMaklumat('TARIKH CETAK', new Date().toLocaleDateString('ms-MY', { day: '2-digit', month: '2-digit', year: 'numeric' })) +
+    '</table>';
+
+  html += '<table style="width:100%;border-collapse:collapse;font-size:8px">' +
+    '<thead>' +
+    '<tr style="background:#e5e7eb;font-weight:bold;text-align:center">' +
+    '<th style="' + ukuran + 'width:20px" rowspan="2">Bil.</th>' +
+    '<th style="' + ukuran + '" rowspan="2">Kategori</th>' +
+    '<th style="' + ukuran + '" rowspan="2">Nama Pelajar</th>' +
+    '<th style="' + ukuran + '" rowspan="2">Angka Giliran</th>' +
+    '<th style="' + ukuran + '" rowspan="2">Kelas</th>' +
+    '<th style="' + ukuran + '" colspan="' + komp.length + '">Markah Komponen</th>' +
+    '<th style="' + ukuran + '" rowspan="2">Jumlah</th>' +
+    '<th style="' + ukuran + '" rowspan="2">Gred</th>' +
+    '<th style="' + ukuran + '" rowspan="2">Mata</th>' +
+    '</tr><tr style="background:#eef2f7;text-align:center;font-size:7px">' +
+    komp.map(k => '<th style="' + ukuran + '">' + esc(k.kod.toUpperCase()) + '<br><span style="font-weight:normal">' + k.wajaran + '%</span></th>').join('') +
+    '</tr></thead><tbody>';
+
+  senarai.forEach((r, i) => {
+    const markah = r.komponen || {};
+    html += '<tr>' +
+      '<td style="' + ukuran + 'text-align:center">' + (i + 1) + '</td>' +
+      '<td style="' + ukuran + 'text-align:center;font-weight:bold">' + esc(r._kat) + '</td>' +
+      '<td style="' + ukuran + '">' + esc(r.nama) + '</td>' +
+      '<td style="' + ukuran + 'text-align:center">' + esc(r.angkaGiliran) + '</td>' +
+      '<td style="' + ukuran + 'text-align:center">' + esc(r.kelas || '') + '</td>' +
+      komp.map(k => {
+        const v = markah[k.kod];
+        return '<td style="' + ukuran + 'text-align:center">' + (v === null || v === undefined || v === '' ? '' : Number(v).toFixed(1)) + '</td>';
+      }).join('') +
+      '<td style="' + ukuran + 'text-align:center;font-weight:bold">' + Number(r.jumlah).toFixed(2) + '</td>' +
+      '<td style="' + ukuran + 'text-align:center;font-weight:bold">' + esc(r.gred || '') + '</td>' +
+      '<td style="' + ukuran + 'text-align:center">' + (r.mata === '' || r.mata === null ? '' : Number(r.mata).toFixed(2)) + '</td>' +
+      '</tr>';
+  });
+  html += '</tbody></table>';
+
+  html += '<div style="margin-top:4mm;font-size:8px">' +
+    '<div style="font-weight:bold;border-bottom:1px solid #000;padding-bottom:1mm;margin-bottom:2mm">ULASAN MODERATOR</div>' +
+    '<div style="min-height:14mm;border:1px solid #999;padding:2mm">' + (ulasan ? esc(ulasan).replace(/\n/g, '<br>') : '&nbsp;') + '</div></div>';
+
+  html += '<div style="display:flex;gap:8mm;margin-top:6mm;font-size:8px">' +
+    '<div style="flex:1"><div style="font-weight:bold;border-bottom:1px solid #000;padding-bottom:1mm;margin-bottom:2mm">DISEDIAKAN OLEH KETUA PEMERIKSA / PEMERIKSA</div>' +
+    '<div>Tandatangan: ______________________</div><div style="margin-top:3mm">Nama: ' + esc(konf.ketuaPemeriksa || '______________________') + '</div>' +
+    '<div style="margin-top:2mm">Tarikh: ______________________</div></div>' +
+    '<div style="flex:1"><div style="font-weight:bold;border-bottom:1px solid #000;padding-bottom:1mm;margin-bottom:2mm">DISAHKAN OLEH MODERATOR / KETUA JABATAN</div>' +
+    '<div>Tandatangan: ______________________</div><div style="margin-top:3mm">Nama: ' + esc(konf.ketuaJabatan || '______________________') + '</div>' +
+    '<div style="margin-top:2mm">Tarikh: ______________________</div></div>' +
+    '</div>' +
+    '<div style="margin-top:4mm;font-size:7px;color:#444">Nota: Sampel dipilih oleh sistem berdasarkan markah akhir (jumlah berwajaran) — ' +
+    (m.kaedah === 'gred' ? 'kategori mengikut gred.' : 'kategori mengikut pecahan tiga (tertile) taburan markah kumpulan.') + '</div>' +
+    '</div>';
+
+  document.getElementById('cetakContainer').innerHTML = html;
+  setTimeout(() => { window.print(); }, 200);
+}
+
 /* ================= CETAK LAM-PT-04-01 ================= */
 function cetakLAM() {
   const komp = komponenAktif();
@@ -1431,6 +1994,11 @@ function tukarTab(nama) {
     b.className = 'tab-btn px-3 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap ' +
       (aktif ? 'border-teal-600 text-teal-700' : 'border-transparent text-slate-500 hover:text-slate-800');
   });
+
+  // Tab analisis: muat data bila dibuka
+  if (nama === 'rekod') binaRekodPrestasi();
+  if (nama === 'analisis') muatAnalisisGred();
+  if (nama === 'moderasi' && !dataModerasi) janaModerasi();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
