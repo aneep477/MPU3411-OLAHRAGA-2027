@@ -127,6 +127,50 @@ angkaGiliran, nama, noKP, kelas, kumpulan, jantina, penilai1, penilai2
 - Jadual boleh skrol mendatar; header jadual kekal di atas semasa skrol
 - Disahkan pada lebar 390px (saiz iPhone)
 
+## Menu analisis & moderasi (v1.3.0 / backend v1.1.0)
+
+Empat tab baharu (khas koordinator) — semuanya menggunakan API backend, bukan pengiraan dalam pelayar.
+
+| Tab | API yang dipanggil | Fungsi |
+|---|---|---|
+| **Rekod Prestasi** | `getData` (sedia ada) | Senarai semua pelajar; klik tajuk lajur untuk susun ikut nama / angka giliran / **kelas** / jumlah / gred / mata. Ada tapisan kelas, carian dan muat turun CSV. |
+| **Analisis Gred** | `analisisGred` | n dinilai, purata, median, **sisihan piawai**, min, maks, julat, % lulus, taburan gred (bilangan + %) dan pecahan ikut kelas. |
+| **Simulasi** | `simulasiSisihanPiawai` | Simulasi Monte Carlo: bootstrap markah sebenar atau jana markah rawak (normal / seragam / serong kanan / serong kiri). Pulangkan purata SD, SD P5–P95, julat SD, histogram SD, taburan gred dan sampel markah. Seed sama = keputusan sama. |
+| **Moderasi LAM-PT-02** | `moderasiPT02` | Pilih sampel **3 rendah / 3 sederhana / 3 tinggi** (boleh tukar calon), kemudian cetak **Borang Moderasi Pentaksiran LAM-PT-02** (A4 landskap). |
+
+### Parameter API
+
+```js
+// Analisis
+{ action: 'analisisGred' }
+
+// Simulasi
+{ action: 'simulasiSisihanPiawai',
+  mod: 'sebenar' | 'rawak',
+  bilangan: 30, iterasi: 300, seed: 2026,
+  minMarkah: 0, maxMarkah: 100,
+  taburan: 'normal' | 'seragam' | 'serongKanan' | 'serongKiri' }
+
+// Moderasi
+{ action: 'moderasiPT02', kaedah: 'tertile' | 'gred', bilangan: 3 }
+```
+
+Semua tindakan ini memerlukan log masuk **koordinator** (penilai biasa akan ditolak dengan mesej *"Hanya koordinator…"*).
+
+### Kaedah pengiraan
+
+- **Sisihan piawai**: sampel, `SD = √( Σ(x − x̄)² / (n − 1) )`. Jika `n = 1`, SD = 0.
+- **Persentil**: interpolasi linear pada senarai tersusun (P5, P50, P95).
+- **Kategori moderasi (tertile)**: sempadan pada persentil 1/3 dan 2/3 taburan markah akhir. **Atau** ikut gred: ≥70 tinggi · 50–69.99 sederhana · <50 rendah.
+- **Pemilihan sampel**: bertaburan dalam setiap kumpulan (bukan 3 teratas sahaja) supaya wakil lebih adil.
+- Markah 0 yang belum dinilai (tiada markah komponen) **dikecualikan** daripada analisis dan sampel.
+
+### Selepas kemas kini
+
+1. `Code.gs` → Apps Script → **Deploy → Manage deployments → Edit → New version → Deploy** (wajib, jika tidak tab baharu akan balas *"Tindakan tidak dikenali."*).
+2. `index.html` → GitHub Pages → **Ctrl + F5**; console patut cetak `v1.3.0-analisis`.
+3. Ujian logik backend: `node test-analisis.js` (43 semakan) dan `node test-kira.js`.
+
 ## Helaian yang dicipta
 
 | Helaian | Fungsi |
