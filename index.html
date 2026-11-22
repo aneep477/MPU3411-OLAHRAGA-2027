@@ -369,7 +369,7 @@
    semua data disimpan dalam pelayar (localStorage) supaya boleh diuji tanpa backend. */
 const urlAPI = 'https://script.google.com/macros/s/AKfycbz9MyHFzQANOABO0l6QPc-112Qh5Yp0ZJfkvtx6ekJanxMfCihZOH0YkLGu9z8Hlk4p/exec';
 const MOD_DEMO = urlAPI.indexOf('GANTI_URL_EXEC_ANDA') !== -1 || /[?&]demo=1/.test(location.search);
-const VERSI_FRONTEND = 'v1.4.0-muatnaik';
+const VERSI_FRONTEND = 'v1.5.0-import-pantas';
 
 let sesi = null;
 let data = { pelajar: [], komponen: [], band: [], markah: [], hantar: [], keputusan: [], konfigurasi: {}, penilai: [] };
@@ -1466,17 +1466,66 @@ function batalMuatNaik() {
 }
 
 /** Hantar rekod yang sudah dipratonton ke backend. */
+/** Hantar rekod dalam kelompok (lalai 150) supaya setiap permintaan kekal jauh di bawah
+ *  had 30s LockService Apps Script — 474 pelajar dalam satu panggilan boleh kena "Lock timeout". */
+const SAIZ_KELOMPOK = 150;
+
 function sahkanMuatNaik() {
   const sedia = window._importSedia;
   if (!sedia || !sedia.rekod || !sedia.rekod.length) { toast('Tiada fail untuk diimport.', 'warn'); return; }
-  const jumlah = sedia.rekod.length;
-  toast('Memuat naik ' + jumlah + ' pelajar…', 'ok');
-  panggil({ action: 'importPelajar', baris: sedia.rekod }).then(res => {
-    if (!res || res.status !== 'success') { toast((res && res.message) || 'Import gagal.', 'error'); return; }
-    toast(res.message, 'ok');
-    batalMuatNaik();
-    muatData();
-  }).catch(e => toast('Ralat import: ' + e.message, 'error'));
+  const semua = sedia.rekod;
+  const jumlah = semua.length;
+  const kelompok = [];
+  for (let i = 0; i < jumlah; i += SAIZ_KELOMPOK) kelompok.push(semua.slice(i, i + SAIZ_KELOMPOK));
+
+  const status = document.getElementById('statusMuatNaik');
+  const kotak = document.getElementById('pratontonMuatNaik');
+  const butangImport = document.querySelector('#pratontonMuatNaik button[onclick="sahkanMuatNaik()"]');
+  if (butangImport) { butangImport.disabled = true; butangImport.textContent = 'Mengimport…'; }
+
+  let selesai = 0, berjaya = 0, gagal = 0;
+  const ralatSemua = [];
+
+  function kemasKini() {
+    const teks = 'Menghantar ' + Math.min(selesai + 1, kelompok.length) + '/' + kelompok.length +
+      ' kelompok · ' + berjaya + ' berjaya' + (gagal ? ' · ' + gagal + ' gagal' : '');
+    if (status) status.innerHTML = '<span class="text-teal-700 font-bold">' + teks + '</span>';
+    if (butangImport) butangImport.textContent = 'Mengimport ' + berjaya + '/' + jumlah + '…';
+  }
+
+  function hantarSatu(i) {
+    if (i >= kelompok.length) {
+      const mesej = berjaya + ' pelajar diimport' + (gagal ? ' · ' + gagal + ' gagal' : '') + '.';
+      toast(mesej, gagal ? 'warn' : 'ok');
+      if (ralatSemua.length) {
+        if (status) status.innerHTML = '<span class="text-amber-700 font-bold">' + mesej + ' ' + esc(ralatSemua.slice(0, 3).join(' · ')) + '</span>';
+      }
+      batalMuatNaik();
+      muatData();
+      return;
+    }
+    kemasKini();
+    panggil({ action: 'importPelajar', baris: kelompok[i] }).then(res => {
+      if (!res || res.status !== 'success') {
+        gagal += kelompok[i].length;
+        ralatSemua.push('Kelompok ' + (i + 1) + ': ' + ((res && res.message) || 'gagal'));
+      } else {
+        berjaya += (res.berjaya !== undefined ? res.berjaya : kelompok[i].length);
+        if (res.ralat && res.ralat.length) ralatSemua.push.apply(ralatSemua, res.ralat);
+        if (res.gagal) gagal += res.gagal;
+      }
+      selesai++;
+      hantarSatu(i + 1);
+    }).catch(e => {
+      gagal += kelompok[i].length;
+      ralatSemua.push('Kelompok ' + (i + 1) + ': ' + e.message);
+      selesai++;
+      hantarSatu(i + 1);
+    });
+  }
+
+  if (status) status.innerHTML = '<span class="text-teal-700 font-bold">Menghantar 0/' + kelompok.length + ' kelompok…</span>';
+  hantarSatu(0);
 }
 
 function binaJadualData() {
