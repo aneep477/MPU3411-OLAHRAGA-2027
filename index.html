@@ -287,7 +287,8 @@
             <summary class="text-[11px] font-bold text-slate-500 cursor-pointer">Import pukal (tampal dari Excel)</summary>
             <p class="text-[10px] text-slate-400 mt-1 leading-snug">Susunan lajur (TAB): <code>angkaGiliran · nama · noKP · kelas · kumpulan · jantina · penilai1 · penilai2</code><br>Jantina: L / P. penilai2 boleh kosong.</p>
             <textarea id="importText" rows="6" placeholder="MPU3411_001	AIN ZULFA BINTI MOHD DZAFER	060706142030	BAM1	YUSAINI	P	yusainy@ipgm.edu.my	" class="mt-1 w-full px-2 py-2 rounded-lg border border-slate-200 text-[11px] font-mono"></textarea>
-            <button onclick="importPelajar()" class="mt-1 w-full border border-slate-300 text-xs font-bold py-2 rounded-lg">Import</button>
+            <button onclick="importPelajar()" class="mt-1 w-full border border-slate-300 text-xs font-bold py-2 rounded-lg">Import dari teks</button>
+            <button onclick="document.getElementById('failPelajar').click()" class="mt-1 w-full bg-teal-700 text-white text-xs font-bold py-2 rounded-lg">⬆ Atau muat naik fail CSV</button>
           </details>
         </div>
         <div class="card p-4">
@@ -314,11 +315,25 @@
           </div>
           <div class="flex flex-wrap gap-2">
             <button onclick="muatTurunTemplat()" class="text-xs font-bold bg-white border border-teal-300 text-teal-700 px-3 py-2 rounded-lg">⬇ Templat CSV</button>
-            <button onclick="pergiTambahPelajar()" class="text-xs font-bold bg-teal-700 text-white px-3 py-2 rounded-lg">＋ Import pukal</button>
+            <button onclick="document.getElementById('failPelajar').click()" class="text-xs font-bold bg-teal-700 text-white px-3 py-2 rounded-lg">⬆ Muat naik fail</button>
+            <button onclick="pergiTambahPelajar()" class="text-xs font-bold bg-white border border-slate-300 text-slate-600 px-3 py-2 rounded-lg">＋ Import pukal</button>
             <button onclick="padamDipilih()" id="btnPadamDipilih" class="text-xs font-bold bg-white border border-red-300 text-red-700 px-3 py-2 rounded-lg" disabled>Padam dipilih (0)</button>
             <button onclick="padamSemua()" class="text-xs font-bold bg-red-600 text-white px-3 py-2 rounded-lg">Padam semua</button>
           </div>
         </div>
+        <input type="file" id="failPelajar" accept=".csv,.tsv,.txt,text/csv,text/plain" class="hidden" onchange="muatNaikFail(this.files && this.files[0]); this.value='';">
+        <div id="kotakMuatNaik"
+             class="mb-3 rounded-xl border-2 border-dashed border-teal-300 bg-teal-50/40 p-3 text-center"
+             ondragover="event.preventDefault(); this.classList.add('border-teal-600','bg-teal-50');"
+             ondragleave="this.classList.remove('border-teal-600','bg-teal-50');"
+             ondrop="event.preventDefault(); this.classList.remove('border-teal-600','bg-teal-50'); if (event.dataTransfer.files && event.dataTransfer.files[0]) muatNaikFail(event.dataTransfer.files[0]);">
+          <p class="text-xs font-bold text-slate-700">Muat naik fail templat pelajar</p>
+          <p class="text-[10px] text-slate-500 mt-0.5 leading-snug">CSV / TSV / TXT (dari Excel: <b>Save As → CSV</b>). Lajur: angkaGiliran · nama · noKP · kelas · kumpulan · jantina · penilai1 · penilai2. Boleh seret fail ke sini.</p>
+          <button onclick="document.getElementById('failPelajar').click()" class="mt-2 text-xs font-bold bg-teal-700 text-white px-3 py-2 rounded-lg">Pilih fail…</button>
+          <button onclick="muatTurunTemplat()" class="mt-2 text-xs font-bold bg-white border border-teal-300 text-teal-700 px-3 py-2 rounded-lg">⬇ Templat</button>
+          <p id="statusMuatNaik" class="text-[11px] mt-2 text-slate-500"></p>
+        </div>
+        <div id="pratontonMuatNaik" class="hidden mb-3"></div>
         <div class="flex flex-wrap items-center gap-2 mb-3">
           <input id="cariData" oninput="binaJadualData()" placeholder="Cari nama / angka giliran / kelas / penilai" class="flex-1 min-w-[200px] px-3 py-2 rounded-lg border border-slate-200 text-xs">
           <span id="kiraData" class="text-[11px] text-slate-500"></span>
@@ -354,7 +369,7 @@
    semua data disimpan dalam pelayar (localStorage) supaya boleh diuji tanpa backend. */
 const urlAPI = 'https://script.google.com/macros/s/AKfycbz9MyHFzQANOABO0l6QPc-112Qh5Yp0ZJfkvtx6ekJanxMfCihZOH0YkLGu9z8Hlk4p/exec';
 const MOD_DEMO = urlAPI.indexOf('GANTI_URL_EXEC_ANDA') !== -1 || /[?&]demo=1/.test(location.search);
-const VERSI_FRONTEND = 'v1.3.1-templat';
+const VERSI_FRONTEND = 'v1.4.0-muatnaik';
 
 let sesi = null;
 let data = { pelajar: [], komponen: [], band: [], markah: [], hantar: [], keputusan: [], konfigurasi: {}, penilai: [] };
@@ -1309,6 +1324,159 @@ function muatTurunTemplat() {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   toast('Templat CSV dimuat turun. Buka dengan Excel.', 'ok');
+}
+
+/* ================= MUAT NAIK FAIL (CSV / TSV / TXT) ================= */
+
+/** Pecah satu baris CSV dengan hormat kepada petikan "..." */
+function pecahBarisCSV(baris) {
+  const out = [];
+  let medan = '', dalamPetikan = false;
+  for (let i = 0; i < baris.length; i++) {
+    const c = baris[i];
+    if (dalamPetikan) {
+      if (c === '"') {
+        if (baris[i + 1] === '"') { medan += '"'; i++; }
+        else dalamPetikan = false;
+      } else medan += c;
+    } else if (c === '"') {
+      dalamPetikan = true;
+    } else if (c === ',' || c === ';' || c === '\t') {
+      out.push(medan); medan = '';
+    } else {
+      medan += c;
+    }
+  }
+  out.push(medan);
+  return out.map(s => s.trim());
+}
+
+/** Baca teks fail jadi array rekod 8 lajur mengikut susunan templat. */
+function bacaFailPelajar(teks) {
+  const bersih = String(teks || '').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+  let baris = bersih.split('\n').map(s => s.replace(/\s+$/, '')).filter(s => s.trim() !== '');
+  if (!baris.length) return { rekod: [], ralat: ['Fail kosong.'] };
+
+  // Header: kenal pasti lajur mengikut nama, supaya susunan bebas
+  let indeks = { angka: 0, nama: 1, noKP: 2, kelas: 3, kumpulan: 4, jantina: 5, penilai1: 6, penilai2: 7 };
+  const kepala = pecahBarisCSV(baris[0]).map(s => s.toLowerCase().replace(/[^a-z0-9]/g, ''));
+  // Baris dianggap header hanya jika sekurang-kurangnya DUA sel tepat menyerupai nama lajur,
+  // supaya baris data (cth. nama pelajar "Nama") tidak tersalah buang.
+  const TOKEN_HEADER = ['angkagiliran', 'angkagil', 'giliran', 'nama', 'namapenuh', 'nokp', 'kadpengenalan', 'kp', 'kelas', 'kumpulan', 'kelompok', 'jantina', 'penilai1', 'penilai2', 'p1', 'p2'];
+  const padananHeader = kepala.filter(k => TOKEN_HEADER.indexOf(k) !== -1).length;
+  const adaHeader = padananHeader >= 2;
+  if (adaHeader) {
+    const cari = (...calon) => {
+      for (let i = 0; i < kepala.length; i++) {
+        if (calon.some(c => kepala[i] === c || kepala[i].indexOf(c) !== -1)) return i;
+      }
+      return -1;
+    };
+    indeks = {
+      angka: cari('angkagiliran', 'angkagil', 'giliran', 'no'),
+      nama: cari('namapenuh', 'nama'),
+      noKP: cari('nokp', 'kadpengenalan', 'kp'),
+      kelas: cari('kelas'),
+      kumpulan: cari('kumpulan', 'kelompok'),
+      jantina: cari('jantina'),
+      penilai1: cari('penilai1', 'p1'),
+      penilai2: cari('penilai2', 'p2')
+    };
+    if (indeks.angka === -1) indeks.angka = 0;
+    if (indeks.nama === -1) indeks.nama = 1;
+    baris.shift();
+  }
+
+  const rekod = [];
+  const ralat = [];
+  baris.forEach((b, i) => {
+    const sel = pecahBarisCSV(b);
+    const ambil = k => (indeks[k] >= 0 && sel[indeks[k]] !== undefined ? String(sel[indeks[k]]).trim() : '');
+    const angka = ambil('angka');
+    const nama = ambil('nama');
+    if (!angka && !nama) return;
+    if (!angka) { ralat.push('Baris ' + (i + 1) + ': angka giliran kosong'); return; }
+    if (!nama) { ralat.push('Baris ' + (i + 1) + ': nama kosong'); return; }
+    rekod.push([
+      angka, nama, ambil('noKP'), ambil('kelas'), ambil('kumpulan'),
+      ambil('jantina').toUpperCase(), ambil('penilai1').toLowerCase(), ambil('penilai2').toLowerCase()
+    ]);
+  });
+  return { rekod: rekod, ralat: ralat };
+}
+
+/** Baca fail (CSV/TSV/TXT) dan tunjuk pratonton sebelum import. */
+function muatNaikFail(fail) {
+  const status = document.getElementById('statusMuatNaik');
+  const kotak = document.getElementById('pratontonMuatNaik');
+  if (!fail) return;
+  const nama = String(fail.name || '');
+  if (!/\.(csv|tsv|txt)$/i.test(nama)) {
+    if (status) status.innerHTML = '<span class="text-red-600 font-bold">Fail mesti .csv, .tsv atau .txt — bukan ' + esc(nama) + '.</span>';
+    return;
+  }
+  if (fail.size > 4 * 1024 * 1024) {
+    if (status) status.innerHTML = '<span class="text-red-600 font-bold">Fail terlalu besar (maks 4 MB).</span>';
+    return;
+  }
+  if (status) status.textContent = 'Membaca ' + nama + '…';
+  const pembaca = new FileReader();
+  pembaca.onload = () => {
+    const hasil = bacaFailPelajar(pembaca.result);
+    window._importSedia = hasil;
+    if (!hasil.rekod.length) {
+      if (status) status.innerHTML = '<span class="text-red-600 font-bold">Tiada baris sah dalam fail. ' + esc((hasil.ralat[0] || '')) + '</span>';
+      if (kotak) { kotak.classList.add('hidden'); kotak.innerHTML = ''; }
+      return;
+    }
+    if (status) status.innerHTML = '<span class="text-emerald-700 font-bold">' + hasil.rekod.length + ' baris dibaca</span>' +
+      (hasil.ralat.length ? ' · <span class="text-amber-700">' + hasil.ralat.length + ' baris bermasalah</span>' : '');
+    if (kotak) {
+      kotak.classList.remove('hidden');
+      kotak.innerHTML =
+        '<div class="rounded-lg border border-slate-200 overflow-hidden">' +
+        '<div class="flex items-center justify-between gap-2 bg-slate-50 px-2 py-1.5">' +
+        '<p class="text-[11px] font-bold text-slate-600">Pratonton ' + Math.min(5, hasil.rekod.length) + ' daripada ' + hasil.rekod.length + ' baris</p>' +
+        '<button onclick="batalMuatNaik()" class="text-[10px] font-bold text-slate-500 underline">Batal</button></div>' +
+        '<div class="overflow-auto"><table class="w-full text-[10px] border-collapse min-w-[560px]">' +
+        '<thead class="bg-slate-900 text-white"><tr><th class="px-1 py-1 text-left">Angka</th><th class="px-1 py-1 text-left">Nama</th>' +
+        '<th class="px-1 py-1 text-left">No. KP</th><th class="px-1 py-1 text-left">Kelas</th><th class="px-1 py-1 text-left">Kump.</th>' +
+        '<th class="px-1 py-1 text-left">Jantina</th><th class="px-1 py-1 text-left">Penilai 1</th><th class="px-1 py-1 text-left">Penilai 2</th></tr></thead><tbody class="divide-y divide-slate-100 bg-white">' +
+        hasil.rekod.slice(0, 5).map(r => '<tr>' + r.map((c, i) => '<td class="px-1 py-1 ' + (i === 1 ? 'font-medium' : 'text-slate-500') + '">' + esc(c || '—') + '</td>').join('') + '</tr>').join('') +
+        '</tbody></table></div>' +
+        (hasil.ralat.length ? '<div class="bg-amber-50 px-2 py-1.5"><p class="text-[10px] text-amber-800 font-bold">Baris dilangkau:</p>' +
+          hasil.ralat.slice(0, 5).map(x => '<p class="text-[10px] text-amber-700">' + esc(x) + '</p>').join('') + '</div>' : '') +
+        '<div class="p-2 flex flex-wrap gap-2">' +
+        '<button onclick="sahkanMuatNaik()" class="flex-1 text-xs font-bold bg-teal-700 text-white px-3 py-2 rounded-lg">Import ' + hasil.rekod.length + ' pelajar</button>' +
+        '<button onclick="batalMuatNaik()" class="text-xs font-bold bg-white border border-slate-300 text-slate-600 px-3 py-2 rounded-lg">Batal</button>' +
+        '</div></div>';
+      kotak.scrollIntoView({ block: 'nearest' });
+    }
+  };
+  pembaca.onerror = () => { if (status) status.innerHTML = '<span class="text-red-600 font-bold">Gagal membaca fail.</span>'; };
+  pembaca.readAsText(fail, 'UTF-8');
+}
+
+function batalMuatNaik() {
+  window._importSedia = null;
+  const kotak = document.getElementById('pratontonMuatNaik');
+  if (kotak) { kotak.classList.add('hidden'); kotak.innerHTML = ''; }
+  const status = document.getElementById('statusMuatNaik');
+  if (status) status.textContent = '';
+}
+
+/** Hantar rekod yang sudah dipratonton ke backend. */
+function sahkanMuatNaik() {
+  const sedia = window._importSedia;
+  if (!sedia || !sedia.rekod || !sedia.rekod.length) { toast('Tiada fail untuk diimport.', 'warn'); return; }
+  const jumlah = sedia.rekod.length;
+  toast('Memuat naik ' + jumlah + ' pelajar…', 'ok');
+  panggil({ action: 'importPelajar', baris: sedia.rekod }).then(res => {
+    if (!res || res.status !== 'success') { toast((res && res.message) || 'Import gagal.', 'error'); return; }
+    toast(res.message, 'ok');
+    batalMuatNaik();
+    muatData();
+  }).catch(e => toast('Ralat import: ' + e.message, 'error'));
 }
 
 function binaJadualData() {
