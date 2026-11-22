@@ -273,7 +273,9 @@
           <h2 class="text-xs font-bold text-slate-500 uppercase mb-2">Komponen</h2>
           <div id="senaraiKomponen" class="space-y-1"></div>
           <button onclick="tambahKomponen()" class="w-full mt-2 text-xs font-bold border border-dashed border-slate-300 text-slate-500 py-2 rounded-lg">+ Komponen baharu</button>
+          <button onclick="selarasSemuaBand()" class="w-full mt-2 text-xs font-bold bg-amber-50 border border-amber-300 text-amber-800 py-2 rounded-lg">⚖ Selaras band ikut skala</button>
           <p id="infoWajaran" class="text-[11px] mt-2 text-center font-bold"></p>
+          <p id="statusSelaras" class="text-[10px] mt-1 text-slate-500 leading-snug"></p>
         </div>
         <div id="panelRubrik" class="space-y-4">
           <div class="card p-6 text-center text-slate-400 text-sm">Pilih komponen untuk mengedit rubrik.</div>
@@ -384,7 +386,7 @@
    semua data disimpan dalam pelayar (localStorage) supaya boleh diuji tanpa backend. */
 const urlAPI = 'https://script.google.com/macros/s/AKfycbz9MyHFzQANOABO0l6QPc-112Qh5Yp0ZJfkvtx6ekJanxMfCihZOH0YkLGu9z8Hlk4p/exec';
 const MOD_DEMO = urlAPI.indexOf('GANTI_URL_EXEC_ANDA') !== -1 || /[?&]demo=1/.test(location.search);
-const VERSI_FRONTEND = 'v1.6.0-filter-kelas';
+const VERSI_FRONTEND = 'v2.0.0-pantas';
 
 let sesi = null;
 let data = { pelajar: [], komponen: [], band: [], markah: [], hantar: [], keputusan: [], konfigurasi: {}, penilai: [] };
@@ -828,26 +830,40 @@ function logKeluar() {
 function semakKoord() { return !!sesi && String(sesi.peranan).toLowerCase() === 'koordinator'; }
 
 /* ================= DATA ================= */
-function muatData() {
+/**
+ * Muat data.
+ *  - Pertama kali (atau selepas tindakan yang mengubah struktur): bina semua paparan.
+ *  - Segar semula senyap: bina SEMULA hanya panel yang aktif. Membina 474 kad pelajar
+ *    + jadual + panel markah setiap 10 saat itulah yang membuatkan sistem tersekat.
+ */
+function muatData(opsyen) {
   if (!sesi) return;
+  const senyap = !!(opsyen && opsyen.senyap);
   panggil({ action: 'getData' }).then(res => {
-    if (res.status !== 'success') { toast(res.message || 'Gagal memuat data.', 'error'); return; }
+    if (res.status !== 'success') { if (!senyap) toast(res.message || 'Gagal memuat data.', 'error'); return; }
     data = res;
     const k = data.konfigurasi || {};
     if (k.kodKursus) document.getElementById('kodKursus').textContent = k.kodKursus;
     if (k.namaKursus) document.getElementById('namaKursus').textContent = namaPendek(k.namaKursus);
-    binaSenaraiPelajar();
-    binaJadualKoord();
-    binaSenaraiKomponen();
-    binaSenaraiPenilai();
-    // Buang pilihan yang pelajarnya sudah tiada
-    const setAngka = new Set((data.pelajar || []).map(p => p.angkaGiliran));
-    pilihanData.forEach(a => { if (!setAngka.has(a)) pilihanData.delete(a); });
-    binaJadualData();
-    if (pelajarAktif) binaPanelMarkah(pelajarAktif);
+
+    if (!senyap) {
+      binaSenaraiPelajar();
+      binaSenaraiKomponen();
+      binaSenaraiPenilai();
+      const setAngka = new Set((data.pelajar || []).map(p => p.angkaGiliran));
+      pilihanData.forEach(a => { if (!setAngka.has(a)) pilihanData.delete(a); });
+      binaJadualData();
+      binaJadualKoord();
+      if (pelajarAktif) binaPanelMarkah(pelajarAktif);
+      if (tabAktif === 'rekod') binaRekodPrestasi();
+      return;
+    }
+
+    // segar semula senyap — hanya yang kelihatan
+    if (tabAktif === 'koordinator') binaJadualKoord();
+    if (tabAktif === 'penilai') { binaSenaraiPelajar(); if (pelajarAktif) binaPanelMarkah(pelajarAktif); }
     if (tabAktif === 'rekod') binaRekodPrestasi();
-    if (tabAktif === 'analisis' && dataAnalisis) muatAnalisisGred();
-  }).catch(e => toast('Ralat: ' + e.message, 'error'));
+  }).catch(e => { if (!senyap) toast('Ralat: ' + e.message, 'error'); });
 }
 
 /** Bawa koordinator terus ke borang tambah/import pelajar dan buka blok import. */
@@ -895,6 +911,7 @@ function binaSenaraiPelajar() {
     btn.dataset.cari = (p.nama + ' ' + p.angkaGiliran).toLowerCase();
     btn.dataset.kelas = String(p.kelas || '').trim();
     btn.dataset.kumpulan = String(p.kumpulan || '').trim();
+    btn.dataset.angka = p.angkaGiliran;
     btn.onclick = () => { pelajarAktif = p.angkaGiliran; binaSenaraiPelajar(); binaPanelMarkah(p.angkaGiliran); };
     btn.innerHTML = '<div class="flex items-center justify-between gap-2">' +
       '<div class="min-w-0"><p class="font-bold truncate">' + esc(p.nama || '(tiada nama)') + '</p>' +
@@ -980,10 +997,20 @@ function markahSaya(angka, kod, cubaan) {
   return r && r.markah !== null ? r.markah : '';
 }
 
+/** Band bagi satu markah. Jika band komponen ini tidak meliputi markah (data lama
+ *  berskala berbeza), pulangkan null supaya UI tidak menyekat nilai yang sah. */
 function bandUntuk(kod, markah) {
   if (markah === '' || markah === null || isNaN(markah)) return null;
   const b = (data.band || []).filter(x => x.komponenKod === kod);
   return b.find(x => Number(markah) >= x.minMarkah && Number(markah) <= x.maxMarkah) || null;
+}
+
+/** Adakah band komponen ini berada dalam skala komponen? */
+function bandDalamSkala(k) {
+  const b = (data.band || []).filter(x => x.komponenKod === k.kod);
+  if (!b.length) return true;
+  const maks = Math.max.apply(null, b.map(x => Number(x.maxMarkah) || 0));
+  return maks <= (Number(k.skalaMaks) || 10) + 0.001;
 }
 
 /** Nama paparan untuk emel penilai. */
@@ -1028,7 +1055,7 @@ function blokCubaan(angka, k, c) {
   const bands = (data.band || []).filter(b => b.komponenKod === k.kod)
     .sort((a, b) => b.minMarkah - a.minMarkah);
   const v = markahSaya(angka, k.kod, c);
-  const gunaTick = bands.length > 0 && k.skalaMaks < 50;
+  const gunaTick = bands.length > 0 && k.skalaMaks < 50 && bandDalamSkala(k);
 
   if (!gunaTick) {
     let peer = '';
@@ -1087,7 +1114,12 @@ function blokCubaan(angka, k, c) {
 
 /** Tick band: ambil titik tengah band sebagai markah permulaan. */
 function tandaBand(angka, kod, cubaan, min, max) {
-  const mid = Math.round(((Number(min) + Number(max)) / 2) * 10) / 10;
+  const k = (data.komponen || []).find(x => x.kod === kod) || {};
+  const skala = Number(k.skalaMaks) || 10;
+  let mid = Math.round(((Number(min) + Number(max)) / 2) * 10) / 10;
+  // jangan hantar nilai di luar skala komponen (punca 'Markah mesti antara 0 hingga 30')
+  if (mid > skala) mid = Math.round(skala * 10) / 10;
+  if (mid < 0) mid = 0;
   simpanNilai(angka, kod, cubaan, String(mid), null);
 }
 
@@ -1180,6 +1212,17 @@ function binaPanelMarkah(angka) {
 
 let simpanTimers = {};
 function simpanNilai(angka, kod, cubaan, nilai, el) {
+  // Sahkan di klien dahulu — elak permintaan yang pasti ditolak backend.
+  const komp = (data.komponen || []).find(x => x.kod === kod) || {};
+  const skala = Number(komp.skalaMaks) || 10;
+  if (nilai !== '' && nilai !== null && !isNaN(Number(nilai))) {
+    const v = Number(nilai);
+    if (v < 0 || v > skala) {
+      toast('Markah mesti antara 0 hingga ' + skala + '.', 'error');
+      if (el) el.value = '';
+      return;
+    }
+  }
   const kunci = angka + '|' + kod + '|' + cubaan;
   clearTimeout(simpanTimers[kunci]);
   simpanTimers[kunci] = setTimeout(() => {
@@ -1199,9 +1242,19 @@ function simpanNilai(angka, kod, cubaan, nilai, el) {
 }
 
 function refreshSemuaPaparan(angka) {
-  binaJadualKoord();
+  // Hanya panel yang benar-benar berubah. Membina 474 kad senarai pelajar pada
+  // setiap simpanan markah menyebabkan UI tersekat.
   binaPanelMarkah(angka);
-  binaSenaraiPelajar();
+  if (tabAktif === 'koordinator') binaJadualKoord();
+  const btn = document.querySelector('#senaraiPelajar button[data-cari][data-angka="' + angka + '"]');
+  if (btn) {
+    const stat = statusPelajar(angka);
+    const lencana = btn.querySelector('span');
+    if (lencana) {
+      lencana.textContent = stat.label;
+      lencana.className = 'text-[10px] font-bold px-1.5 py-0.5 rounded ' + (stat.semua ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500');
+    }
+  }
 }
 
 /* ================= JADUAL SEMUA PELAJAR ================= */
@@ -1288,6 +1341,32 @@ function binaSenaraiKomponen() {
     info.textContent = 'Jumlah wajaran: ' + jumlah + '%' + (Math.abs(jumlah - 100) < 0.001 ? ' ✓' : ' — mesti 100%');
     info.className = 'text-[11px] mt-2 text-center font-bold ' + (Math.abs(jumlah - 100) < 0.001 ? 'text-emerald-600' : 'text-red-600');
   }
+}
+
+/** Betulkan band yang skalanya tidak sepadan dengan skalaMaks komponen (cth. ujian 0–100 pada /30). */
+function selarasSemuaBand() {
+  const status = document.getElementById('statusSelaras');
+  if (status) status.textContent = 'Menyelaras…';
+  panggil({ action: 'selarasBand' }).then(res => {
+    if (!res || res.status !== 'success') {
+      toast((res && res.message) || 'Gagal selaras band.', 'error');
+      if (status) status.textContent = (res && res.message) || 'Gagal.';
+      return;
+    }
+    let lap = res.laporan;
+    try { lap = JSON.parse(res.laporan); } catch (e) { /* biar teks */ }
+    const dibetulkan = (lap && lap.dibetulkan) ? Object.keys(lap.dibetulkan) : [];
+    if (status) {
+      status.innerHTML = dibetulkan.length
+        ? '<span class="text-emerald-700 font-bold">' + dibetulkan.length + ' komponen dibetulkan:</span> ' + esc(dibetulkan.join(', '))
+        : '<span class="text-slate-500">Semua band sudah dalam skala betul.</span>';
+    }
+    toast(dibetulkan.length ? ('Band dibetulkan: ' + dibetulkan.join(', ')) : 'Semua band sudah betul.', 'ok');
+    muatData();
+  }).catch(e => {
+    toast('Ralat: ' + e.message, 'error');
+    if (status) status.textContent = e.message;
+  });
 }
 
 function binaPanelRubrik() {
@@ -2334,19 +2413,16 @@ document.addEventListener('DOMContentLoaded', () => {
 let pollTimer = null;
 function mulaPoll() {
   if (pollTimer) return;
+  // 30s (dahulu 10s) dan HANYA menyegarkan paparan yang aktif.
+  // Panel pemarkahan tidak disentuh supaya nilai yang sedang ditaip tidak hilang.
   pollTimer = setInterval(() => {
     if (!sesi || document.visibilityState !== 'visible') return;
     const el = document.activeElement;
-    if (el && ['INPUT', 'TEXTAREA', 'SELECT'].indexOf(el.tagName) !== -1) return; // jangan ganggu semasa menaip
-    panggil({ action: 'getData' }).then(res => {
-      if (!res || res.status !== 'success') return;
-      data = res;
-      binaSenaraiPelajar();
-      binaJadualKoord();
-      if (tabAktif === 'penilai' && pelajarAktif) binaPanelMarkah(pelajarAktif);
-      if (tabAktif === 'rubrik') binaSenaraiKomponen();
-    }).catch(() => { /* diam */ });
-  }, 10000);
+    if (el && ['INPUT', 'TEXTAREA', 'SELECT'].indexOf(el.tagName) !== -1) return;
+    if (tabAktif === 'penilai') return; // elak panel ditimpa semasa menanda
+    if (tabAktif !== 'koordinator' && tabAktif !== 'rekod') return;
+    muatData({ senyap: true });
+  }, 30000);
 }
 
 function resetDemo() {
